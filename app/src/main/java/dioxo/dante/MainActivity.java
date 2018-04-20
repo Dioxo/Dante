@@ -1,38 +1,43 @@
 package dioxo.dante;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
+import android.speech.RecognitionListener;
+import android.speech.RecognizerIntent;
+import android.speech.SpeechRecognizer;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
-import ai.api.AIListener;
-import ai.api.android.AIConfiguration;
-import ai.api.android.AIService;
-import ai.api.model.AIError;
-import ai.api.model.AIResponse;
-import ai.api.model.Result;
-import com.google.gson.JsonElement;
-import java.util.Map;
 import android.widget.Button;
 import android.widget.TextView;
-import android.widget.Toast;
 
+import java.util.ArrayList;
+import java.util.Locale;
 
-public class MainActivity extends AppCompatActivity  implements  AIListener{
-    private Button listenButton;
-    private TextView resultTextView;
-    private AIService aiService;
-    String accessToken = "0e3de3b388354c75a2f7c483f08a1f14";
-    TTSManager ttsManager = new TTSManager();
+import dioxo.dante.Features.Hablar;
 
+public class MainActivity extends AppCompatActivity {
 
+    //Boton para hablar, Texto ingresado por usuario, Respuesta de Dante
+    private Button escuchar;
+    private TextView miTexto;
+    private TextView respuestaDante;
+    private Hablar hablar;
 
+    private SpeechRecognizer mSpeechRecognizer;
+    private Intent mSpeechRecognizerIntent;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,6 +46,9 @@ public class MainActivity extends AppCompatActivity  implements  AIListener{
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
+        checkPermisoMicrofono();
+
+        hablar = new Hablar();
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -50,21 +58,91 @@ public class MainActivity extends AppCompatActivity  implements  AIListener{
             }
         });
 
-        listenButton = (Button) findViewById(R.id.listenButton);
-        resultTextView = (TextView) findViewById(R.id.resultTextView);
+        miTexto = findViewById(R.id.miTextoTv);
+        respuestaDante = findViewById(R.id.respuestaDanteTv);
 
         iniciarConfig();
+
+        findViewById(R.id.escucharBtn).setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View view, MotionEvent motionEvent) {
+                switch (motionEvent.getAction()){
+
+                    case MotionEvent.ACTION_UP:
+                        mSpeechRecognizer.stopListening();
+                        break;
+
+                    case MotionEvent.ACTION_DOWN:
+                        mSpeechRecognizer.startListening(mSpeechRecognizerIntent);
+                        break;
+
+                }
+                return false;
+            }
+        });
     }
 
     private void iniciarConfig() {
+        hablar.init(this);
+        mSpeechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
 
-        ttsManager.init(this);
-        final AIConfiguration config = new AIConfiguration(accessToken,
-                AIConfiguration.SupportedLanguages.Spanish,
-                AIConfiguration.RecognitionEngine.System);
+        mSpeechRecognizerIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        mSpeechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                                        RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
 
-        aiService = AIService.getService(this, config);
-        aiService.setListener(this);
+        mSpeechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
+
+        mSpeechRecognizer.setRecognitionListener(new RecognitionListener() {
+            @Override
+            public void onReadyForSpeech(Bundle bundle) {
+
+            }
+
+            @Override
+            public void onBeginningOfSpeech() {
+
+            }
+
+            @Override
+            public void onRmsChanged(float v) {
+
+            }
+
+            @Override
+            public void onBufferReceived(byte[] bytes) {
+
+            }
+
+            @Override
+            public void onEndOfSpeech() {
+
+            }
+
+            @Override
+            public void onError(int i) {
+
+            }
+
+            @Override
+            public void onResults(Bundle bundle) {
+                Log.i("grabando","si");
+                ArrayList<String> matches = bundle.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+
+                if(matches != null){
+                    miTexto.setText(matches.get(0));
+                }
+            }
+
+            @Override
+            public void onPartialResults(Bundle bundle) {
+
+            }
+
+            @Override
+            public void onEvent(int i, Bundle bundle) {
+
+            }
+        });
     }
 
     @Override
@@ -89,88 +167,26 @@ public class MainActivity extends AppCompatActivity  implements  AIListener{
         return super.onOptionsItemSelected(item);
     }
 
-    @Override
-    public void onResult(final AIResponse response) {
-        Result result = response.getResult();
-
-        // Get parameters
-        String parameterString = "";
-        if (result.getParameters() != null && !result.getParameters().isEmpty()) {
-            for (final Map.Entry<String, JsonElement> entry : result.getParameters().entrySet()) {
-                parameterString += "(" + entry.getKey() + ", " + entry.getValue() + ") ";
-            }
-        }
-
-        // Show results in TextView.
-        resultTextView.setText("Query:" + result.getResolvedQuery() +
-                "\nAction: " + result.getAction() +
-                "\nParameters: " + parameterString+
-                "\nstatus Code: " + response.getStatus()+
-                "\nSpeech: " + result.getFulfillment().getSpeech()+
-                "\nMetadata: " + result.getMetadata().getIntentName());
-
-        if(result.getFulfillment().getSpeech() != null){
-            danteHabla(result.getFulfillment().getSpeech());
-        }
-    }
 
     private void danteHabla(String speech) {
-        ttsManager.initQueue(speech);
-    }
-
-    @Override
-    public void onError(final AIError error) {
-        resultTextView.setText(error.toString());
-    }
-
-    @Override
-    public void onListeningStarted() {}
-
-    @Override
-    public void onListeningCanceled() {}
-
-    @Override
-    public void onListeningFinished() {}
-
-    @Override
-    public void onAudioLevel(final float level) {}
-
-    public void listenButtonOnClick(final View view) {
-        requestRecordAudioPermission();
+        hablar.iniciarReproduccion(speech);
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        ttsManager.shutDown();
+        hablar.shutDown();
     }
 
-    private void requestRecordAudioPermission() {
-
-        String requiredPermission = Manifest.permission.RECORD_AUDIO;
-
-        // If the user previously denied this permission then show a message explaining why
-        // this permission is needed
-        if (this.checkCallingOrSelfPermission(requiredPermission) == PackageManager.PERMISSION_GRANTED) {
-            aiService.startListening();
-
-        } else {
-
-            Toast.makeText(this, "This app needs to record audio through the microphone....", Toast.LENGTH_SHORT).show();
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                requestPermissions(new String[]{requiredPermission}, 101);
+    private void checkPermisoMicrofono(){
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (!(ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED)) {
+                Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.parse("package:" + getPackageName()));
+                startActivity(intent);
+                finish();
             }
         }
-
-
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode,
-                                           String permissions[], int[] grantResults) {
-        if (requestCode == 101 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            // This method is called when the  permissions are given
-        }
-
-    }
 }

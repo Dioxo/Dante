@@ -1,4 +1,4 @@
-package dioxo.dante;
+package dioxo.dante.Features;
 
 import android.content.Context;
 import android.speech.tts.TextToSpeech;
@@ -6,33 +6,27 @@ import android.util.Log;
 
 import java.util.Locale;
 
-import ai.api.AIListener;
-import ai.api.android.AIConfiguration;
-import ai.api.android.AIService;
-
 /**
  * Created by Dioxo on 17/03/2018.
  */
 
-public class TTSManager{
+public class Hablar {
 
-    private TextToSpeech textToSpeech = null;
+    private TextToSpeech texto_voz = null;
     private boolean isLoaded = false;
 
     public void init(Context context){
-        try {
-            textToSpeech = new TextToSpeech(context, onInitListener);
-        }catch (Exception e){
-
-        }
+        texto_voz = new TextToSpeech(context, onInitListener);
     }
 
     private TextToSpeech.OnInitListener onInitListener = new TextToSpeech.OnInitListener() {
         @Override
         public void onInit(int i) {
-            Locale spanish = new Locale("es", "ES");
+
+            //cargar voz que el usuario defina por defecto en su android con Locale.getDefault()
+            Locale spanish = Locale.getDefault();
             if(i == TextToSpeech.SUCCESS){
-                int result = textToSpeech.setLanguage(spanish);
+                int result = texto_voz.setLanguage(spanish);
                 isLoaded = true;
             }
 
@@ -42,21 +36,24 @@ public class TTSManager{
         }
     };
 
-
+    //Apagar la voz de dante cuando el ciclo de vida de la app se termina
     public void shutDown(){
-        textToSpeech.shutdown();
+        texto_voz.shutdown();
     }
 
-    public void addQueue(String text){
+    //agregar texto a reproducir, a la cola de reproducción
+    public void agregarACola(String text){
         if(isLoaded){
-            textToSpeech.speak(text, TextToSpeech.QUEUE_ADD, null);
+            texto_voz.speak(text, TextToSpeech.QUEUE_ADD, null);
         }else {
             Log.e("Error", "TTS no ha cargado");
         }
     }
-    public void initQueue(String text){
+
+    //limpia la cola de reproducción para reproducir el siguiente texto
+    public void iniciarReproduccion(String text){
         if(isLoaded){
-            textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null);
+            texto_voz.speak(text, TextToSpeech.QUEUE_FLUSH, null);
         }else {
             Log.e("Error", "TTS no ha cargado");
         }

@@ -11,18 +11,24 @@
 
 
     <Button
-        android:id="@+id/listenButton"
+        android:id="@+id/escucharBtn"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:onClick="listenButtonOnClick"
-        android:text="Escucha"
+        android:text="Escuchar"
         tools:layout_editor_absoluteX="148dp"
         tools:layout_editor_absoluteY="30dp" />
 
     <TextView
-        android:id="@+id/resultTextView"
+        android:id="@+id/miTextoTv"
         android:layout_width="match_parent"
-        android:layout_height="466dp"
+        android:layout_height="wrap_content"
+        android:ems="10"
+        android:text="" />
+
+    <TextView
+        android:id="@+id/respuestaDanteTv"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
         android:ems="10"
         android:text="" />
 </LinearLayout>
